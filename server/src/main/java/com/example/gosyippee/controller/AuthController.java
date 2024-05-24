@@ -39,33 +39,40 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> createUserHandler(@RequestBody User user) throws UserException {
+    	System.out.println("Trace 1 ");
         String email = user.getEmail();
         String full_name = user.getFull_name();
         String password = user.getPassword();
-
+        System.out.println("Trace 2 ");
         User isUser = userRepository.findByEmail(email);
-
+        System.out.println("Trace 3 ");
         if(isUser != null){
             throw new UserException("Email is with another account " + email);
         }
+        System.out.println("Trace 4 ");
 
         User createdUser = new User();
         createdUser.setEmail(email);
         createdUser.setFull_name(full_name);
         createdUser.setPassword(passwordEncoder.encode(password));
-
+        System.out.println("Trace 5 ");
         userRepository.save(createdUser);
-
+        System.out.println("Trace 6 ");
         Authentication authentication = new UsernamePasswordAuthenticationToken(email, password);
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        System.out.println("Trace 7 ");
 
         String jwt = tokenProvider.generateToken(authentication);
+        System.out.println("Trace 8 ");
 
         AuthResponse res = new AuthResponse(jwt, true);
+        System.out.println("Response: " + res);
+        System.out.println("Trace 9 ");
 
         return new ResponseEntity<AuthResponse>(res, HttpStatus.ACCEPTED);
     }
-
+    
+    @PostMapping("/signin")
     public ResponseEntity<AuthResponse> loginHandler(@RequestBody LoginRequest req) {
         String email = req.getEmail();
         String password = req.getPassword();
