@@ -5,6 +5,7 @@ import { searchUser, updateUser } from "./Action"
 const initialValue = {
     signup: null,
     signin: null,
+    reqUser: null,
 }
 
 export const authReducer=(store=initialValue, {type, payload})=>{

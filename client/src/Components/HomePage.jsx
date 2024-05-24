@@ -15,11 +15,13 @@ import { useState } from "react";
 import "./HomePage.css";
 import Profile from "./Profile/Profile";
 import { useNavigate } from "react-router-dom";
-import { Menu, MenuItem } from "@mui/material";
+import { Menu, MenuItem, createChainedFunction } from "@mui/material";
 import CreateGroup from "./Group/CreateGroup";
 import { useDispatch, useSelector } from "react-redux";
 import { store } from "../Redux/store";
-import { currentUser, logoutAction } from "../Redux/Auth/Action";
+import { currentUser, logoutAction, searchUser } from "../Redux/Auth/Action";
+import { createChat, getUsersChat } from "../Redux/Chat/Action";
+import { createMessage, getAllMessages } from "../Redux/Message/Action";
 
 const HomePage = () => {
   const [querys, setQuerys] = useState(null);
@@ -30,7 +32,7 @@ const HomePage = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [isGroup, setIsGroup] = useState(false);
   const dispatch = useDispatch();
-  const { auth } = useSelector(store=>store);
+  const { auth, chat, message } = useSelector(store=>store);
   const token = localStorage.getItem("token");
 
   const open = anchorEl;
@@ -41,11 +43,29 @@ const HomePage = () => {
     setAnchorEl(null);
   };
 
-  const handleSearch = () => {};
-  const handleClickOnChatCard = () => {
-    setCurrentChat(true);
+  const handleSearch = (keyword) => {
+    dispatch(searchUser(keyword, token));
   };
-  const handleCreateNewMessage = () => {};
+  const handleClickOnChatCard = (userId) => {
+    // setCurrentChat(true);
+    dispatch(createChat({token, data:{userId}}))
+    setQuerys("");
+  };
+  const handleCreateNewMessage = () => {
+    dispatch(createMessage({token, data:{chatId: currentChat.id, content: content}}))
+    console.log("create new message")
+  };
+
+  useEffect(()=>{
+    dispatch(getUsersChat({token}))
+  }, [chat.createdChat, chat.createdGroup]);
+
+  useEffect(()=>{
+    if(currentChat?.id){
+      dispatch(getAllMessages({chatId: currentChat.id, token}))
+    }
+  }, [currentChat, message.newMessage]);
+
   const handleNavigate = () => {
     setIsProfile(true);
   };
@@ -55,14 +75,18 @@ const HomePage = () => {
   const handleCreateGroup = () => {
     setIsGroup(true);
   }
-  useEffect(()=>{
-    dispatch(currentUser(token))
-  }, [token])
-
   const handleLogout = () => {
     dispatch(logoutAction())
     navigate("/signup")
   }
+
+  const handleCurrentChat = (item) => {
+    setCurrentChat(item);
+  }
+
+  useEffect(()=>{
+    dispatch(currentUser(token))
+  }, [token])
 
   useEffect(()=>{
     if(!auth.reqUser){
@@ -145,10 +169,46 @@ const HomePage = () => {
               {/* all users */}
               <div className="bg-white overflow-y-scroll h-[72vh] px-3">
                 {querys &&
-                  [1, 1, 1, 1, 1].map((item) => (
-                    <div onClick={handleClickOnChatCard}>
+                  auth.searchUser?.map((item) => (
+                    <div onClick={() => handleClickOnChatCard(item.id)}>
                       <hr />
-                      <ChatCard />
+                      <ChatCard 
+                      name={item.chat_name}
+                      userImg={
+                        item.chat_image || 
+                        "https://cdn.pixabay.com/photo/2021/09/29/22/59/viola-6668608_640.jpg"
+                      }/>
+                    </div>
+                  ))}
+                {chat.chats.length>0 && !querys &&
+                  chat.chats?.map((item) => (
+                    <div onClick={() => handleCurrentChat(item)}>
+                      <hr /> {item.is_group ? (
+                        <ChatCard
+                        name={item.chat_name}
+                        userImg={
+                          item.chat_image || 
+                          "https://cdn.pixabay.com/photo/2014/09/28/10/36/group-464644_640.jpg"
+                        }
+                        />
+                      ) : (
+                        <ChatCard
+                        isChat={true}
+                        name={
+                          auth.reqUser?.id !== item.users[0]?.id
+                          ? item.users[0].full_name
+                          : item.users[1].full_name
+                        }
+                        userImg={
+                          auth.reqUser.id !== item.users[0].id
+                          ? item.users[0].profile_picture || 
+                          "https://cdn.pixabay.com/photo/2021/09/29/22/59/viola-6668608_640.jpg"
+                          : item.users[1].profile_picture || 
+                          "https://cdn.pixabay.com/photo/2021/09/29/22/59/viola-6668608_640.jpg"
+                        }
+                        />
+                      ) }
+                      
                     </div>
                   ))}
               </div>
@@ -174,10 +234,16 @@ const HomePage = () => {
                 <div className="py-3 space-x-4 flex items-center px-3">
                   <img
                     className="w-10 h-10 rounded-full"
-                    src="https://cdn.pixabay.com/photo/2024/05/11/06/47/tropical-8754092_640.jpg"
+                    src={currentChat.is_group?currentChat.chat_image || "https://cdn.pixabay.com/photo/2014/09/28/10/36/group-464644_640.jpg" : (
+                        auth.reqUser.id !== currentChat.users[0].id
+                        ? currentChat.users[0].profile_picture || 
+                        "https://cdn.pixabay.com/photo/2021/09/29/22/59/viola-6668608_640.jpg"
+                        : currentChat.users[1].profile_picture || 
+                        "https://cdn.pixabay.com/photo/2021/09/29/22/59/viola-6668608_640.jpg")
+                    }
                     alt=""
                   />
-                  <p>{auth.reqUser?.full_name}</p>
+                  <p>{currentChat.is_group? currentChat.chat_name: auth.reqUser?.id === currentChat.users[0].id?currentChat.users[1].full_name:currentChat.users[0].full_name}</p>
                 </div>
                 <div className="py-3 flex space-x-4 items-center px-3">
                   <AiOutlineSearch />
@@ -189,10 +255,10 @@ const HomePage = () => {
             {/* message section */}
             <div className="px-10 h-[85vh] overflow-y-scroll">
               <div className="space-y-1 flex flex-col justify-center mt-20 py-2">
-                {[1, 1, 1, 1, 1].map((item, i) => (
+                {message.messages.length>0 && message.messages?.map((item, i) => (
                   <MessageCard
-                    isReqUserMessage={i % 2 === 0}
-                    content={"message"}
+                    isReqUserMessage={item.user.id!==auth.reqUser.id}
+                    content={item.content}
                   />
                 ))}
               </div>
