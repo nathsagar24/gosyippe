@@ -100,7 +100,7 @@ const HomePage = () => {
       <div className="flex bg-[#f0f2f5] h-[90vh] absolute left-[2vw] top-[5vh] w-[96vw]">
         <div className="left w-[30%] bg-[#e8e9ec] h-full">
           {/* profile */}
-          {isGroup && <CreateGroup/>}
+          {isGroup && <CreateGroup setIsGroup={setIsGroup}/>}
           {isProfile && (
             <Profile
               className="w-full h-full"
@@ -117,7 +117,7 @@ const HomePage = () => {
                 >
                   <img
                     className="rounded-full w-10 h-10 cursor-pointer"
-                    src="https://media.istockphoto.com/id/865392900/photo/blue-green-soft-blurred-background-with-bubble-bokeh-effect.jpg?s=2048x2048&w=is&k=20&c=bbztJL4FKI2HE-ZcFIy2aODa96EYn8IejU4473vzdI0="
+                    src={auth.reqUser?.profile_picture || "https://cdn.pixabay.com/photo/2020/10/22/10/28/cow-5675684_960_720.jpg"}
                     alt=""
                   />
                   <p>{auth.reqUser?.full_name}</p>

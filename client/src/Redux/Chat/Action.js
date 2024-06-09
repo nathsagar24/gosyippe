@@ -9,7 +9,7 @@ export const createChat = (chatData) => async (dispatch) => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${chatData.token}`
             },
-            body: JSON.stringify(chatData.data)
+            body: JSON.stringify(chatData.group)
         })
         data = await res.json();
         console.log("create chat ", data);
