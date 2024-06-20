@@ -23,6 +23,9 @@ import { currentUser, logoutAction, searchUser } from "../Redux/Auth/Action";
 import { createChat, getUsersChat } from "../Redux/Chat/Action";
 import { createMessage, getAllMessages } from "../Redux/Message/Action";
 
+import SockJS from "sockjs-client/dist/sockjs";
+import { over } from "stompjs";
+
 const HomePage = () => {
   const [querys, setQuerys] = useState(null);
   const [currentChat, setCurrentChat] = useState(null);
@@ -34,6 +37,65 @@ const HomePage = () => {
   const dispatch = useDispatch();
   const { auth, chat, message } = useSelector(store=>store);
   const token = localStorage.getItem("token");
+
+  const [stompClient, setStompClient] = useState();
+  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState([]);
+
+  const connect = () => {
+    const sock = new SockJS("http://localhost:5454/ws");
+    const temp = over(sock);
+    setStompClient(temp);
+
+    const headers={
+      Authorization: `Bearer ${token}`,
+      "X-XSRF-TOKEN": getCookie("XSRF-TOKEN")
+    }
+
+    temp.connect(headers, onConnect, onError);
+  }
+
+  function getCookie(name){
+    const value=`; ${document.cookie}`;
+    const parts=value.split(`; ${name}=`);
+    if(parts.length==2){
+      return parts.pop().split(";").shift();
+    }
+  }
+
+  const onError=(error)=>{
+    console.log("on error ", error)
+  }
+
+  const onConnect=()=>{
+    setIsConnected(true);
+  }
+
+  useEffect(()=>{
+    if(message.newMessage && stompClient) {
+      setMessages([...messages, message.newMessage])
+      stompClient?.send("/app/message", {}, JSON.stringify(message.newMessage));
+    }
+  }, [message.newMessage])
+
+  const onMessageRecieve=(payload)=> {
+    console.log("Recieved message ", JSON.parse(payload.body))
+    const recievedMessage=JSON.parse(payload.body);
+    setMessages([...messages, recievedMessage]);
+  }
+
+  useEffect(()=>{
+    if(isConnected && stompClient && auth.reqUser && currentChat){
+      const subscription = stompClient.subscribe("/group/"+currentChat.id.toString(), onMessageRecieve);
+      return ()=>{
+        subscription.unsubscribe();
+      }
+    }
+  })
+
+  useEffect(()=>{
+    connect();
+  },[])
 
   const open = anchorEl;
   const handleClick = (event) => {
@@ -255,7 +317,7 @@ const HomePage = () => {
             {/* message section */}
             <div className="px-10 h-[85vh] overflow-y-scroll">
               <div className="space-y-1 flex flex-col justify-center mt-20 py-2">
-                {message.messages.length>0 && message.messages?.map((item, i) => (
+                {messages.length>0 && messages?.map((item, i) => (
                   <MessageCard
                     isReqUserMessage={item.user.id!==auth.reqUser.id}
                     content={item.content}
